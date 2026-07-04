@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Lookup Dashboard</title>
+  <meta name="description" content="Seller Invoice No / FWD PO No थी Cust Order No lookup tool" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <!-- Firebase SDKs (Compat versions for simple integration) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-card">
+      <div class="login-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="login-icon">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <h2 class="login-title">Secure Login</h2>
+        <p class="login-sub">Order Lookup Dashboard</p>
+      </div>
+      
+      <div class="input-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="Enter your email" />
+      </div>
+      <div class="input-group" style="margin-top: 16px;">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter your password" />
+      </div>
+      
+      <p id="loginError" class="login-error" style="display:none; color: var(--clr-danger); font-size: 0.85rem; margin-top: 12px;"></p>
+      
+      <button id="btnLogin" class="btn btn-primary" style="width: 100%; margin-top: 24px; padding: 14px;">Sign In</button>
+    </div>
+  </div>
+
+  <div class="app-layout" id="mainApp" style="display: none;">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="header-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="header-title" id="platformTitle" style="font-size:1.4rem;">DREAM Lookup</h1>
+          <p class="header-sub" style="font-size:0.8rem; margin-top:2px;">Tool</p>
+        </div>
+      </div>
+      
+      <div class="platform-switcher" style="padding: 0 20px 20px 20px; display: flex; gap: 10px;">
+        <button id="btnPlatformAJIO" class="platform-btn active" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--clr-border); background: var(--clr-primary); color: #fff; font-weight: 600; cursor: pointer; transition: 0.2s;">DREAM</button>
+        <button id="btnPlatformJIHU" class="platform-btn" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--clr-border); background: var(--clr-surface); color: var(--clr-text); font-weight: 600; cursor: pointer; transition: 0.2s;">JIHU</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          Dashboard
+        </button>
+        <button class="nav-btn" data-view="uploads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Upload Data
+        </button>
+        <button class="nav-btn" data-view="history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          History
+        </button>
+        <button class="nav-btn" data-view="rtv-upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          RTV Upload
+        </button>
+        <button class="nav-btn" data-view="rtv-history">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          RTV History
+        </button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard" class="view-section">
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px;">Dashboard Overview</h2>
+
+    <!-- Dashboard -->
+    <div class="card search-card" id="dashboardCard" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="input-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" />
+          </div>
+          <div class="input-group">
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate" />
+          </div>
+          <button class="btn btn-primary" id="generateReportBtn" style="margin-top:18px;">Generate</button>
+          <button class="btn btn-outline" id="clearReportBtn" style="margin-top:18px;">Clear</button>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardSales" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Sales Count</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#4ade80;" id="dashSalesCount">0</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#4ade80; margin-top:2px;" id="dashSalesAmount">₹0.00</div>
+          </div>
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardReturns" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Returns Count</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#f87171;" id="dashReturnsCount">0</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#f87171; margin-top:2px;" id="dashReturnsAmount">₹0.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shipping Filter -->
+    <div class="card search-card" id="dashboardShipCard" style="margin-bottom:20px;">
+      <h3 style="font-size: 1rem; margin-bottom: 15px; color: var(--clr-warning);">Shipping Charges (Clr Date)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="input-group">
+            <label for="shipStartDate">Start Date</label>
+            <input type="date" id="shipStartDate" />
+          </div>
+          <div class="input-group">
+            <label for="shipEndDate">End Date</label>
+            <input type="date" id="shipEndDate" />
+          </div>
+          <button class="btn btn-warn" id="generateShipBtn" style="margin-top:18px;">Generate</button>
+          <button class="btn btn-outline" id="clearShipBtn" style="margin-top:18px;">Clear</button>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardShip" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Shipping Count</div>
+            <div style="font-size:1.4rem; font-weight:700; color:var(--clr-warning);" id="dashShipCount">0</div>
+            <div style="font-size:0.9rem; font-weight:600; color:var(--clr-warning); margin-top:2px;" id="dashShipAmount">₹0.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Doc Date Report -->
+    <div class="card search-card" id="dashboardDocCard" style="margin-bottom:20px;">
+      <h3 style="font-size: 1rem; margin-bottom: 15px; color: #a855f7;">Doc Report (Doc Date)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="input-group">
+            <label for="docStartDate">Start Date</label>
+            <input type="date" id="docStartDate" />
+          </div>
+          <div class="input-group">
+            <label for="docEndDate">End Date</label>
+            <input type="date" id="docEndDate" />
+          </div>
+          <button class="btn" style="background:#a855f7; color:white; margin-top:18px;" id="generateDocBtn">Generate</button>
+          <button class="btn btn-outline" id="clearDocBtn" style="margin-top:18px;">Clear</button>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardDocClr" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Cleared</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#a855f7;" id="dashDocClrCount">0</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#a855f7; margin-top:2px;" id="dashDocClrAmount">₹0.00</div>
+          </div>
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardDocNotClr" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Not Cleared</div>
+            <div style="font-size:1.4rem; font-weight:700; color:#f87171;" id="dashDocNotClrCount">0</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#f87171; margin-top:2px;" id="dashDocNotClrAmount">₹0.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RTV Dashboard Card (Missing Records) -->
+    <div class="card dashboard-card" id="dashboardCardRtv" style="display:none; margin-bottom: 20px;">
+      <h3 style="font-size: 1rem; margin-bottom: 15px; color: var(--clr-danger);">RTV Missing Records (FWD PO Date)</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="input-group">
+            <label for="rtvStartDate">Start Date</label>
+            <input type="date" id="rtvStartDate" />
+          </div>
+          <div class="input-group">
+            <label for="rtvEndDate">End Date</label>
+            <input type="date" id="rtvEndDate" />
+          </div>
+          <button class="btn btn-primary" id="filterRtvBtn" style="margin-top:18px;">Generate</button>
+          <button class="btn btn-outline" id="clearRtvFilterBtn" style="margin-top:18px;">Clear</button>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center;">
+          <div style="text-align:right; cursor: pointer; padding: 10px; border-radius: 8px; transition: background 0.2s;" id="statCardRtvMissing" onmouseover="this.style.background='var(--clr-surface)';" onmouseout="this.style.background='transparent';">
+            <div style="font-size:0.75rem; color:var(--clr-text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Missing Tracking & Condition</div>
+            <div style="font-size:1.4rem; font-weight:700; color:var(--clr-danger);" id="dashRtvMissingCount">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      </div><!-- /view-dashboard -->
+
+      <!-- HISTORY VIEW -->
+      <div id="view-history" class="view-section" style="display:none;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px;">History & Records</h2>
+
+      <!-- Lookup Input -->
+    <div class="card search-card" id="searchCard" style="display:none">
+      <div class="search-row">
+        <div class="input-group">
+          <label for="searchInput">&#128269; Single Lookup: Seller Invoice No અથવા FWD PO No</label>
+          <input type="text" id="searchInput" placeholder="e.g. AJIO5556 or 5179389177" />
+        </div>
+        <button class="btn btn-primary" id="searchBtn">Search</button>
+      </div>
+      <div class="search-result" id="searchResult" style="display:none"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-row" id="actionsRow" style="display:none">
+      <button class="btn btn-success" id="downloadBtn">&#11015; Excel Download</button>
+      <button class="btn btn-danger" id="resetBtn">&#128465; Delete All Data</button>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card table-card" id="tableCard" style="display:none">
+      <div class="table-header">
+        <h2 class="table-title">Result Table</h2>
+        <div class="filter-tabs">
+          <button class="tab active" data-filter="all">All</button>
+          <button class="tab" data-filter="forward">Forward Value</button>
+          <button class="tab" data-filter="returns">Return Value</button>
+          <button class="tab" data-filter="shipping">Shipping</button>
+          <button class="tab" data-filter="invoice">Invoice Found</button>
+          <button class="tab" data-filter="fwd">FWD PO Found</button>
+          <button class="tab" data-filter="missing">Not Found</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="resultTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Seller Invoice No</th>
+              <th>FWD PO No</th>
+              <th>Cust Order No</th>
+              <th>Seller Invoice Date</th>
+              <th style="color:#4ade80">&#9650; Forward Value</th>
+              <th style="color:#f87171">&#9660; Return Value</th>
+              <th style="color:var(--clr-warning)">Shipping Charge</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+          <tfoot id="tableFooter"></tfoot>
+        </table>
+      </div>
+      <div class="pagination-controls" id="paginationControls" style="display:none; justify-content:space-between; align-items:center; padding: 15px; border-top: 1px solid var(--clr-border);">
+        <div id="pageInfo" style="color: var(--clr-text-muted); font-size: 0.9rem;"></div>
+        <div style="display:flex; gap: 10px;">
+          <button class="btn btn-outline" id="prevPageBtn" style="padding: 5px 15px;">Previous</button>
+          <button class="btn btn-outline" id="nextPageBtn" style="padding: 5px 15px;">Next</button>
+        </div>
+      </div>
+    </div>
+    </div><!-- /view-history -->
+
+      <!-- UPLOADS VIEW -->
+      <div id="view-uploads" class="view-section" style="display:none;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px;">Upload Data Files</h2>
+
+        <!-- ── FILE UPLOADS ── -->
+        <div class="uploads-grid">
+
+      <!-- File 1: Main Orders Sheet -->
+      <div class="card upload-card" id="uploadCard1">
+        <div class="upload-label">
+          <span class="upload-badge badge-file1">File 1</span>
+          <span class="upload-label-text">Main Orders Sheet</span>
+        </div>
+        <div class="upload-zone" id="uploadZone1">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <p class="upload-text">FWD PO No + Seller Invoice No</p>
+          <p class="upload-hint">Cust Order No lookup sheet</p>
+          <input type="file" id="fileInput1" accept=".xlsx,.xls,.csv" hidden />
+          <button class="btn btn-primary" id="selectBtn1">&#128194; Select File 1</button>
+        </div>
+        <div class="file-status" id="fileStatus1" style="display:none">
+          <div><span class="file-status-icon">&#9989;</span> <span id="fileStatus1Text"></span></div>
+        </div>
+      </div>
+
+      <!-- File 2: Value/Price Sheet -->
+      <div class="card upload-card" id="dropZone2">
+        <div class="upload-label">
+          <span class="upload-badge badge-file2">File 2</span>
+          <span class="upload-label-text">Value / Price Sheet</span>
+        </div>
+        <input type="file" id="fileInput2" accept=".xlsx, .xls, .csv" hidden />
+        <div class="upload-zone">
+          <div class="upload-icon upload-icon-accent">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+          </div>
+          <div class="upload-text">Invoice Number + Value</div>
+          <div class="upload-hint">Value lookup sheet</div>
+          <div class="btn btn-accent" onclick="document.getElementById('fileInput2').click()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+            Select File 2
+          </div>
+        </div>
+        <div id="fileStatus2" class="file-status" style="display:none"></div>
+      </div>
+
+      <!-- File 3 Upload -->
+      <div class="card upload-card" id="dropZone3">
+        <div class="upload-label">
+          <span class="upload-badge badge-file3">File 3</span>
+          <span class="upload-label-text">Retention / Deduction</span>
+        </div>
+        <input type="file" id="fileInput3" accept=".xlsx, .xls, .csv" hidden />
+        <div class="upload-zone">
+          <div class="upload-icon upload-icon-warn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          </div>
+          <div class="upload-text">Reference DV + Amount</div>
+          <div class="upload-hint">Deduction sheet</div>
+          <div class="btn btn-warn" onclick="document.getElementById('fileInput3').click()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+            Select File 3
+          </div>
+        </div>
+        <div id="fileStatus3" class="file-status" style="display:none"></div>
+      </div>
+    </div><!-- /uploads-grid -->
+
+    <!-- Process Button -->
+    <div class="process-row" id="processRow" style="display:none">
+      <button class="btn btn-process" id="processBtn">
+        &#9889; Process &amp; Match Files
+      </button>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar" id="statusBar" style="display:none">
+      <div class="status-content">
+        <span class="status-icon" id="statusIcon">&#9203;</span>
+        <span id="statusText">Processing...</span>
+      </div>
+      <div class="status-pills">
+        <span class="pill pill-total"   id="pillTotal"   style="display:none"></span>
+        <span class="pill pill-found"   id="pillFound"   style="display:none"></span>
+        <span class="pill pill-fwd"     id="pillFwd"     style="display:none"></span>
+        <span class="pill pill-missing" id="pillMissing" style="display:none"></span>
+        <span class="pill pill-grand"   id="pillGrand"   style="display:none"></span>
+      </div>
+    </div>
+
+      </div><!-- /view-uploads -->
+
+      <!-- RTV UPLOAD VIEW -->
+      <div id="view-rtv-upload" class="view-section" style="display:none;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px;">Upload RTV & MKT Files</h2>
+
+        <div class="uploads-grid">
+          <!-- MKT File Upload -->
+          <div class="card upload-card" id="uploadCardMkt">
+            <div class="upload-label">
+              <span class="upload-badge badge-file1">Step 1</span>
+              <span class="upload-label-text">MKT File</span>
+            </div>
+            <div class="upload-zone" id="uploadZoneMkt">
+              <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+              </div>
+              <p class="upload-text">Upload MKT Sheet</p>
+              <p class="upload-hint">Contains Order No, Tracking & Condition</p>
+              <input type="file" id="fileInputMkt" accept=".xlsx,.xls,.csv" hidden />
+              <button class="btn btn-primary" id="selectBtnMkt" onclick="document.getElementById('fileInputMkt').click()">&#128194; Select MKT File</button>
+            </div>
+            <div class="file-status" id="fileStatusMkt" style="display:none">
+              <div><span class="file-status-icon">&#9989;</span> <span id="fileStatusMktText"></span></div>
+            </div>
+          </div>
+
+          <!-- RTV File Upload -->
+          <div class="card upload-card" id="uploadCardRtv">
+            <div class="upload-label">
+              <span class="upload-badge badge-file2">Step 2</span>
+              <span class="upload-label-text">RTV File</span>
+            </div>
+            <input type="file" id="fileInputRtv" accept=".xlsx, .xls, .csv" hidden />
+            <div class="upload-zone">
+              <div class="upload-icon upload-icon-accent">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              </div>
+              <div class="upload-text">Upload RTV Sheet</div>
+              <div class="upload-hint">Contains Order No to find</div>
+              <div class="btn btn-accent" onclick="document.getElementById('fileInputRtv').click()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+                Select RTV File
+              </div>
+            </div>
+            <div id="fileStatusRtv" class="file-status" style="display:none">
+               <div><span class="file-status-icon">&#9989;</span> <span id="fileStatusRtvText"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="process-row" id="processRowRtv" style="display:none">
+          <button class="btn btn-process" id="processBtnRtv" style="background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);">
+            &#128269; Extract Tracking & Condition
+          </button>
+        </div>
+      </div><!-- /view-rtv-upload -->
+
+      <!-- RTV HISTORY VIEW -->
+      <div id="view-rtv-history" class="view-section" style="display:none;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px;">RTV Extraction History</h2>
+
+
+
+        <div class="status-bar" id="statusBarRtv" style="display:none; margin-bottom: 20px;">
+          <div class="status-content">
+            <span class="status-icon" id="statusIconRtv">&#9203;</span>
+            <span id="statusTextRtv">Processing...</span>
+          </div>
+          <div class="status-pills">
+            <span class="pill pill-total" id="pillTotalRtv" style="display:none"></span>
+            <span class="pill pill-missing" id="pillMissingRtv" style="display:none"></span>
+          </div>
+        </div>
+
+        <!-- RTV Results Table -->
+        <div class="card table-card" id="tableCardRtv" style="display:none; margin-top:20px;">
+          <div class="table-header">
+            <h2 class="table-title">Extracted Orders (Missing Tracking & Condition)</h2>
+            <button class="btn btn-success" id="downloadRtvBtn" style="padding:6px 12px; font-size:0.8rem;">&#11015; Download Excel</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="resultTableRtv">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Order No (RTV)</th>
+                  <th>FWD PO Date</th>
+                  <th>Match Status</th>
+                  <th>Return Tracking No</th>
+                  <th>Condition</th>
+                </tr>
+              </thead>
+              <tbody id="tableBodyRtv"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /view-rtv-history -->
+    </main>
+  </div><!-- /app-layout -->
+
+  <script src="app.js"></script>
+</body>
+</html>
